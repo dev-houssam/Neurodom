@@ -1,0 +1,29 @@
+<agent name="MovieGrid">
+
+  <identity>
+    <trait>grid</trait>
+    <family>movie-system</family>
+  </identity>
+
+  <ports>
+    <in name="movies" />
+    <out name="hover" />
+  </ports>
+
+  <view>
+    <div class="movie-grid"></div>
+  </view>
+
+  <state>
+    let movies = []
+  </state>
+
+  <!--
+    Quand input.movies arrive -> "render-cards" est une fn dans FunctionRegistry
+    qui crée dynamiquement les MovieCard agents enfants
+  -->
+  <flow name="render">
+    input.movies -> render-cards
+  </flow>
+
+</agent>

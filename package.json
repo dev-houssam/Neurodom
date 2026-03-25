@@ -1,0 +1,25 @@
+{
+  "name": "neurodom",
+  "version": "0.1.0",
+  "description": "Agent-based distributed intelligent UI runtime",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "scripts": {
+    "dev": "node packages/cli/index.js dev",
+    "build": "node packages/cli/index.js build",
+    "example": "cd examples/movie-gallery && node ../../packages/cli/index.js dev"
+  },
+  "main": "packages/cli/index.js",
+  "directories": {
+    "example": "examples"
+  },
+  "author": "Houssam BACAR",
+  "license": "ISC",
+  "dependencies": {
+    "ws": "^8.20.0"
+  }
+}

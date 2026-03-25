@@ -1,0 +1,53 @@
+<agent name="MovieCard">
+
+  <identity>
+    <trait>movie</trait>
+    <trait>interactive</trait>
+    <family>movie-system</family>
+  </identity>
+
+  <ports>
+    <in name="movie" />
+    <out name="hover" />
+    <out name="select" />
+  </ports>
+
+  <view>
+    <div class="card">
+      <div class="card-poster-wrapper">
+        <img class="card-poster" src="" alt="" loading="lazy" />
+      </div>
+      <div class="card-body">
+        <div class="card-title"></div>
+        <div class="card-meta">
+          <span class="card-rating"></span>
+          <span class="card-year"></span>
+        </div>
+      </div>
+    </div>
+  </view>
+
+  <state>
+    let movie = null
+    let hovered = false
+  </state>
+
+  <!-- Remplir les données quand le port "movie" reçoit des données -->
+  <flow name="populate">
+    input.movie -> populate-card
+  </flow>
+
+  <!-- Interactions UI -->
+  <flow name="on-hover">
+    ui.hover -> card-hover
+  </flow>
+
+  <flow name="on-leave">
+    ui.leave -> card-leave
+  </flow>
+
+  <flow name="on-click">
+    ui.click -> emit.select
+  </flow>
+
+</agent>

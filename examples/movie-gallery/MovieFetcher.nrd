@@ -1,0 +1,26 @@
+<agent name="MovieFetcher">
+
+  <identity>
+    <trait>data-source</trait>
+    <family>movie-system</family>
+  </identity>
+
+  <ports>
+    <out name="movies" type="Movie[]" />
+  </ports>
+
+  <state>
+    let loaded = false
+  </state>
+
+  <!--
+    SYNTAXE NEURODOM — Explication :
+    - "lifecycle.mount" est la source (déclenché automatiquement au montage)
+    - "fetch-data"      appelle FunctionRegistry.call("fetch-data", ctx)
+    - "emit.movies"     envoie ctx.current sur le port de sortie "movies"
+  -->
+  <flow name="init">
+    lifecycle.mount -> fetch-data -> emit.movies
+  </flow>
+
+</agent>

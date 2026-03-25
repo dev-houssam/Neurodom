@@ -1,0 +1,40 @@
+<agent name="PreviewPlayer">
+
+  <identity>
+    <trait>preview</trait>
+    <family>movie-system</family>
+  </identity>
+
+  <ports>
+    <in name="movie" />
+  </ports>
+
+  <view>
+    <div class="preview-empty" id="preview-empty">
+      <div class="preview-empty-icon">🎬</div>
+      <span>Hover a film to preview</span>
+    </div>
+
+    <div class="preview-card" id="preview-card" style="display:none">
+      <img class="preview-backdrop" src="" alt="" />
+      <div class="preview-title"></div>
+      <div class="preview-meta">
+        <span class="preview-rating-badge preview-tag"></span>
+        <span class="preview-tag preview-year"></span>
+        <span class="preview-tag preview-genre"></span>
+      </div>
+      <p class="preview-overview"></p>
+      <button class="preview-watch-btn">▶ Watch Now</button>
+    </div>
+  </view>
+
+  <state>
+    let current = null
+  </state>
+
+  <!-- Afficher le film quand le port "movie" reçoit des données -->
+  <flow name="show">
+    input.movie -> show-preview
+  </flow>
+
+</agent>

@@ -1,0 +1,1347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NeuroDOM — Movie Gallery Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #070a0f;
+      --surface: #0d1117;
+      --surface2: #161b22;
+      --border: #21262d;
+      --accent: #e63946;
+      --accent2: #f4a261;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --green: #4fffb0;
+      --blue: #4a9eff;
+      --card-radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+    #app { position: relative; z-index: 1; }
+
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 40px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: rgba(7,10,15,0.9);
+      backdrop-filter: blur(12px);
+      z-index: 50;
+    }
+    .nav-logo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 20px;
+      letter-spacing: -0.5px;
+    }
+    .nav-logo span { color: var(--accent); }
+    .nav-right { display: flex; gap: 10px; align-items: center; }
+    .nav-badge {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 10px;
+      color: var(--muted);
+    }
+    .devtools-hint {
+      background: rgba(74,158,255,0.1);
+      border: 1px solid rgba(74,158,255,0.3);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 10px;
+      color: var(--blue);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .devtools-hint:hover { background: rgba(74,158,255,0.2); }
+
+    .hero {
+      padding: 56px 40px 40px;
+    }
+    .hero h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(2.2rem, 5vw, 3.8rem);
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -2px;
+      margin-bottom: 14px;
+    }
+    .hero h1 .acc { color: var(--accent); }
+    .hero p { color: var(--muted); font-size: 12px; line-height: 1.7; max-width: 520px; }
+    .hero-chips { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+    .chip {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 10px;
+      color: var(--muted);
+    }
+    .chip.active { border-color: var(--green); color: var(--green); }
+
+    .main-layout {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      min-height: calc(100vh - 260px);
+    }
+    .grid-section {
+      padding: 28px 40px;
+      border-right: 1px solid var(--border);
+    }
+    .preview-section {
+      padding: 28px 24px;
+      position: sticky;
+      top: 61px;
+      height: calc(100vh - 61px);
+      overflow-y: auto;
+    }
+
+    .section-label {
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* Movie grid */
+    .movie-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 14px;
+    }
+
+    /* Movie card */
+    movie-card { display: block; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--card-radius);
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.25s, box-shadow 0.25s;
+      position: relative;
+      transform-origin: center;
+    }
+    .card:hover {
+      border-color: rgba(230,57,70,0.5);
+      box-shadow: 0 8px 32px rgba(230,57,70,0.12);
+    }
+    .card.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(230,57,70,0.2), 0 8px 32px rgba(230,57,70,0.2);
+    }
+    .card-poster {
+      width: 100%;
+      aspect-ratio: 2/3;
+      object-fit: cover;
+      display: block;
+      background: var(--surface2);
+      transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .card:hover .card-poster { transform: scale(1.04); }
+    .card-poster-wrapper { overflow: hidden; }
+    .card-body { padding: 10px 12px 12px; }
+    .card-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 5px;
+    }
+    .card-meta {
+      font-size: 10px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+    }
+    .card-rating { color: var(--accent2); }
+    .card-year { }
+
+    /* Preview panel */
+    preview-player { display: block; }
+    .preview-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 280px;
+      color: var(--muted);
+      font-size: 11px;
+      text-align: center;
+      gap: 10px;
+      border: 1px dashed var(--border);
+      border-radius: var(--card-radius);
+    }
+    .preview-empty-icon { font-size: 40px; opacity: 0.25; }
+    .preview-card { display: none; }
+    .preview-card.visible {
+      display: block;
+      animation: slide-up 0.35s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes slide-up {
+      from { opacity: 0; transform: translateY(20px) scale(0.96); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .preview-backdrop {
+      width: 100%;
+      aspect-ratio: 16/9;
+      object-fit: cover;
+      border-radius: var(--card-radius);
+      margin-bottom: 18px;
+      display: block;
+      background: var(--surface2);
+    }
+    .preview-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 20px;
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 10px;
+    }
+    .preview-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+    .preview-tag {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      color: var(--muted);
+    }
+    .preview-rating-badge {
+      background: rgba(244,162,97,0.15);
+      border: 1px solid rgba(244,162,97,0.3);
+      color: var(--accent2);
+    }
+    .preview-overview {
+      font-size: 11px;
+      line-height: 1.75;
+      color: #8fa3b8;
+      margin-bottom: 20px;
+    }
+    .preview-watch-btn {
+      display: block;
+      width: 100%;
+      padding: 13px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+    }
+    .preview-watch-btn:hover {
+      background: #ff4d5a;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(230,57,70,0.35);
+    }
+    .preview-watch-btn:active { transform: translateY(0); }
+
+    .preview-agents-section { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+    .preview-agents-label { font-size: 10px; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+    .preview-agent-flow {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      color: var(--muted);
+      padding: 4px 0;
+    }
+    .flow-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .flow-arrow { color: var(--border); }
+
+    .status-bar {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(13,17,23,0.95);
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 10px;
+      color: var(--muted);
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      z-index: 10;
+      backdrop-filter: blur(8px);
+      white-space: nowrap;
+    }
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: blink 2s infinite;
+      flex-shrink: 0;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    /* ── DevTools Panel ─────────────────────────────────────────────────── */
+    #__nrd-devtools__ {
+      position: fixed;
+      top: 0; right: 0;
+      width: 360px;
+      height: 100vh;
+      background: #0d1117;
+      color: #c9d1d9;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      z-index: 99999;
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid #30363d;
+      transform: translateX(100%);
+      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+      box-shadow: -4px 0 32px rgba(0,0,0,0.7);
+    }
+    .nrd-dt-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      flex-shrink: 0;
+    }
+    .nrd-dt-logo { font-size: 12px; font-weight: bold; color: #4a9eff; flex: 1; }
+    .nrd-dt-tabs { display: flex; gap: 2px; }
+    .nrd-tab {
+      background: transparent;
+      border: 1px solid #30363d;
+      color: #8b949e;
+      padding: 3px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 10px;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .nrd-tab.active, .nrd-tab:hover { background: #1f6feb; color: #fff; border-color: #1f6feb; }
+    .nrd-dt-close { background: none; border: none; color: #8b949e; cursor: pointer; font-size: 14px; padding: 2px 6px; }
+    .nrd-dt-close:hover { color: #ff4444; }
+    .nrd-dt-body { flex: 1; overflow: hidden; position: relative; }
+    .nrd-tab-content { display: none; height: 100%; overflow-y: auto; padding: 8px; box-sizing: border-box; }
+    .nrd-tab-content.active { display: block; }
+    #nrd-graph-canvas { width: 100%; background: #0a0d13; border-radius: 6px; display: block; border: 1px solid #21262d; }
+    .nrd-graph-legend { display: flex; gap: 12px; padding: 6px 4px; color: #8b949e; font-size: 10px; align-items: center; }
+    .nrd-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 2px; }
+    .nrd-dot-idle { background: #4a9eff; }
+    .nrd-dot-running { background: #4fffb0; }
+    .nrd-dot-cooldown { background: #ffb347; }
+    .nrd-agent-row {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 7px 6px; border-bottom: 1px solid #21262d; transition: background 0.1s;
+    }
+    .nrd-agent-row:hover { background: #161b22; }
+    .nrd-status-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 3px; flex-shrink: 0; }
+    .nrd-status-idle { background: #4a9eff; }
+    .nrd-status-running { background: #4fffb0; box-shadow: 0 0 8px #4fffb0; }
+    .nrd-status-cooldown { background: #ffb347; }
+    .nrd-agent-info { flex: 1; min-width: 0; }
+    .nrd-agent-info strong { display: block; color: #e6edf3; font-size: 12px; }
+    .nrd-agent-id { color: #6e7681; font-size: 9px; }
+    .nrd-traits { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 3px; }
+    .nrd-trait { background: #1f3a5f; color: #79c0ff; padding: 1px 5px; border-radius: 3px; font-size: 9px; }
+    .nrd-last-event { color: #8b949e; font-size: 9px; margin-top: 2px; }
+    .nrd-state { color: #6e7681; font-size: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .nrd-emit-count { color: #4fffb0; font-size: 10px; flex-shrink: 0; }
+    .nrd-event-row {
+      display: grid;
+      grid-template-columns: 58px 90px 1fr;
+      gap: 4px;
+      padding: 3px 4px;
+      border-bottom: 1px solid #21262d;
+      font-size: 10px;
+      animation: nrd-in 0.2s ease;
+    }
+    @keyframes nrd-in { from{opacity:0;transform:translateX(6px)} to{opacity:1;transform:translateX(0)} }
+    .nrd-event-time { color: #6e7681; }
+    .nrd-event-agent { color: #79c0ff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .nrd-event-type { font-weight: bold; }
+    .nrd-ev-input { color: #ffa657; }
+    .nrd-ev-emit { color: #4fffb0; }
+    .nrd-ev-lifecycle { color: #bf8fff; }
+    .nrd-event-data { grid-column: 1/-1; color: #6e7681; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; }
+    .nrd-dt-footer {
+      padding: 6px 12px;
+      background: #161b22;
+      border-top: 1px solid #30363d;
+      color: #6e7681;
+      font-size: 10px;
+      flex-shrink: 0;
+      display: flex;
+      justify-content: space-between;
+    }
+    .nrd-kernel-stats { color: #4a9eff; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <nav>
+    <div class="nav-logo">⬡ Neuro<span>DOM</span></div>
+    <div class="nav-right">
+      <div class="nav-badge">Runtime v0.1-alpha</div>
+      <div class="devtools-hint" id="devtools-toggle">⬡ DevTools <kbd>Ctrl+Shift+D</kbd></div>
+    </div>
+  </nav>
+
+  <div class="hero">
+    <h1>Cinema <span class="acc">Agent</span><br/>Gallery</h1>
+    <p>Every component below is an autonomous agent communicating via typed data flows.
+       No event listeners. No shared state. Just a graph of agents.</p>
+    <div class="hero-chips">
+      <span class="chip active">⬡ 4 agents active</span>
+      <span class="chip">⇄ 2 connections</span>
+      <span class="chip">◎ Multi-flow DSL</span>
+      <span class="chip">⟳ Scheduler ON</span>
+    </div>
+  </div>
+
+  <div class="main-layout">
+    <div class="grid-section">
+      <div class="section-label">Films</div>
+      <movie-grid></movie-grid>
+    </div>
+    <div class="preview-section">
+      <div class="section-label">Preview</div>
+      <preview-player></preview-player>
+
+      <div class="preview-agents-section">
+        <div class="preview-agents-label">Active Agent Graph</div>
+        <div class="preview-agent-flow">
+          <span class="flow-dot" style="background:#bf8fff"></span>
+          <span>MovieFetcher</span>
+          <span class="flow-arrow">──→</span>
+          <span class="flow-dot" style="background:#4a9eff"></span>
+          <span>MovieGrid</span>
+        </div>
+        <div class="preview-agent-flow">
+          <span class="flow-dot" style="background:#4a9eff"></span>
+          <span>MovieGrid.hover</span>
+          <span class="flow-arrow">──→</span>
+          <span class="flow-dot" style="background:#4fffb0"></span>
+          <span>PreviewPlayer</span>
+        </div>
+        <div class="preview-agent-flow">
+          <span class="flow-dot" style="background:#ffa657"></span>
+          <span>MovieCard × N</span>
+          <span class="flow-arrow">──→</span>
+          <span class="flow-dot" style="background:#4a9eff"></span>
+          <span>MovieGrid</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Headless agents (no UI) -->
+  <movie-fetcher style="display:none"></movie-fetcher>
+</div>
+
+<div class="status-bar">
+  <span class="status-dot"></span>
+  <span>NeuroDOM Runtime Active</span>
+  <span style="color:var(--border)">|</span>
+  <span id="runtime-stats">0 agents</span>
+</div>
+
+<!-- ── DevTools Panel ──────────────────────────────────────────────────── -->
+<div id="__nrd-devtools__">
+  <div class="nrd-dt-header">
+    <span class="nrd-dt-logo">⬡ NeuroDOM DevTools</span>
+    <div class="nrd-dt-tabs">
+      <button class="nrd-tab active" data-tab="graph">Graph</button>
+      <button class="nrd-tab" data-tab="agents">Agents</button>
+      <button class="nrd-tab" data-tab="events">Events</button>
+    </div>
+    <button class="nrd-dt-close" id="nrd-close">✕</button>
+  </div>
+  <div class="nrd-dt-body">
+    <div class="nrd-tab-content active" data-content="graph">
+      <canvas id="nrd-graph-canvas" width="344" height="260"></canvas>
+      <div class="nrd-graph-legend">
+        <span class="nrd-dot nrd-dot-idle"></span>idle
+        <span class="nrd-dot nrd-dot-running"></span>running
+        <span class="nrd-dot nrd-dot-cooldown"></span>cooldown
+      </div>
+    </div>
+    <div class="nrd-tab-content" data-content="agents">
+      <div id="nrd-agents-list"></div>
+    </div>
+    <div class="nrd-tab-content" data-content="events">
+      <div id="nrd-events-list"></div>
+    </div>
+  </div>
+  <div class="nrd-dt-footer">
+    <span id="nrd-stats">0 agents · 0 events</span>
+    <span class="nrd-kernel-stats" id="nrd-kernel-stats"></span>
+  </div>
+</div>
+
+<script type="module">
+// ═══════════════════════════════════════════════════════════════════════════
+// NeuroDOM Runtime — Inline Bundle
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── FunctionRegistry ────────────────────────────────────────────────────────
+const FunctionRegistry = {
+  _fns: {
+    distance(ctx, target) {
+      if (!ctx.ui || !target) return Infinity;
+      const rect = ctx.ui.getRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      return Math.sqrt((target.x - cx) ** 2 + (target.y - cy) ** 2);
+    },
+    enrich(ctx, data) { return { ...data, _enriched: true, _ts: Date.now() }; },
+    merge(ctx, ...args) { return Object.assign({}, ...(Array.isArray(args[0]) ? args[0] : args)); },
+  },
+  register(name, fn) { this._fns[name] = fn; },
+  call(name, ctx, ...args) {
+    if (!this._fns[name]) return ctx.current;
+    return this._fns[name](ctx, ...args);
+  },
+};
+
+// ── FlowExecutor ────────────────────────────────────────────────────────────
+const FlowExecutor = {
+  run(flow, ctx, event) {
+    if (!flow?.pipelines) return;
+    flow.pipelines.forEach(p => this.executePipeline(p, ctx, event));
+  },
+
+  executePipeline(pipeline, ctx, event) {
+    // Source matching
+    const sourceKey = event.type;
+    const src = pipeline.source || (pipeline.sources ? null : null);
+
+    if (pipeline.sources) {
+      const vals = pipeline.sources.map(s => this.resolveSource(s, ctx, event));
+      if (vals.some(v => v === undefined || v === null)) return;
+      ctx.current = vals;
+    } else {
+      if (src !== sourceKey && src !== '*') return;
+      const val = this.resolveSource(src, ctx, event);
+      if (val === undefined) return;
+      ctx.current = val;
+    }
+
+    if (pipeline.condition && !pipeline.condition(ctx, ctx.current)) return;
+
+    for (const step of (pipeline.steps || [])) {
+      if (this.executeStep(step, ctx) === 'STOP') return;
+    }
+  },
+
+  resolveSource(source, ctx, event) {
+    if (!source) return event.payload;
+    if (source === '*') return event.payload;
+    if (source.startsWith('input.')) return ctx.input[source.slice(6)];
+    if (source.startsWith('state.')) return ctx.state[source.slice(6)];
+    if (source === event.type) return event.payload ?? true;
+    if (ctx.local[source] !== undefined) return ctx.local[source];
+    return undefined;
+  },
+
+  executeStep(step, ctx) {
+    switch (step.type) {
+      case 'fn':
+        ctx.current = FunctionRegistry.call(step.name, ctx, ...(step.args || []));
+        break;
+      case 'assign':
+        if (step.target?.startsWith('state.'))
+          ctx.state[step.target.slice(6)] = ctx.current;
+        else
+          ctx.local[step.target] = ctx.current;
+        break;
+      case 'ui':
+        if (ctx.ui?.[step.action]) ctx.ui[step.action](...(step.args || []));
+        break;
+      case 'emit':
+        ctx.emit(step.port, step.value !== undefined ? step.value : ctx.current);
+        break;
+      case 'filter':
+        if (!Array.isArray(ctx.current)) return 'STOP';
+        ctx.current = ctx.current.filter(step.fn);
+        break;
+      case 'map':
+        if (!Array.isArray(ctx.current)) return 'STOP';
+        ctx.current = ctx.current.map(step.fn);
+        break;
+      case 'condition':
+        if (!step.fn(ctx.current)) return 'STOP';
+        break;
+      case 'match': {
+        const branch = step.cases[ctx.current] || step.cases['default'];
+        if (branch) branch.forEach(s => this.executeStep(s, ctx));
+        return 'STOP';
+      }
+      case 'raw':
+        step.fn?.(ctx);
+        break;
+    }
+    return null;
+  },
+};
+
+// ── UIBatcher ────────────────────────────────────────────────────────────────
+class UIBatcher {
+  constructor() { this._q = []; this._keyed = new Map(); this._sch = false; }
+  enqueue(fn, key = null) {
+    key ? this._keyed.set(key, fn) : this._q.push(fn);
+    if (!this._sch) { this._sch = true; requestAnimationFrame(() => this._flush()); }
+  }
+  _flush() {
+    this._keyed.forEach(fn => fn());
+    this._keyed.clear();
+    this._q.splice(0).forEach(fn => fn());
+    this._sch = false;
+  }
+}
+const batcher = new UIBatcher();
+
+// ── UIAPI ───────────────────────────────────────────────────────────────────
+class UIAPI {
+  constructor(root, agent) {
+    this._root = root;
+    this._agent = agent;
+    this._evClean = [];
+    this._attachEvents();
+  }
+  $(sel) { return sel ? this._root.querySelector(sel) : this._root; }
+  getRect() { return this._root.getBoundingClientRect(); }
+  setText(sel, v) { batcher.enqueue(() => { const e = this.$(sel); if (e) e.textContent = String(v); }, `t:${this._agent.id}:${sel}`); }
+  setHTML(sel, v) { batcher.enqueue(() => { const e = this.$(sel); if (e) e.innerHTML = v; }, `h:${this._agent.id}:${sel}`); }
+  setAttr(sel, n, v) { batcher.enqueue(() => this.$(sel)?.setAttribute(n, v), `a:${this._agent.id}:${sel}:${n}`); }
+  addClass(sel, c) { batcher.enqueue(() => this.$(sel)?.classList.add(c)); }
+  removeClass(sel, c) { batcher.enqueue(() => this.$(sel)?.classList.remove(c)); }
+  toggleClass(sel, c, f) { batcher.enqueue(() => this.$(sel)?.classList.toggle(c, f)); }
+  setStyle(sel, p, v) { batcher.enqueue(() => { const e = this.$(sel); if (e) e.style[p] = v; }, `s:${this._agent.id}:${sel}:${p}`); }
+  show(sel = null) { batcher.enqueue(() => { const e = this.$(sel); if (e) e.style.display = ''; }, `vis:${this._agent.id}:${sel}`); }
+  hide(sel = null) { batcher.enqueue(() => { const e = this.$(sel); if (e) e.style.display = 'none'; }, `vis:${this._agent.id}:${sel}`); }
+  scale(v, sel = null) { batcher.enqueue(() => { const e = this.$(sel); if (e) e.style.transform = `scale(${v})`; }, `sc:${this._agent.id}:${sel}`); }
+  clear(sel = null) { batcher.enqueue(() => { const e = this.$(sel); if (e) e.innerHTML = ''; }); }
+  append(child, sel = null) { batcher.enqueue(() => { const p = this.$(sel); if (p && child) p.appendChild(child); }); }
+  remove(child) { batcher.enqueue(() => child?.remove()); }
+  _attachEvents() {
+    const map = { 'ui.click':'click', 'ui.hover':'mouseenter', 'ui.leave':'mouseleave', 'ui.input':'input' };
+    Object.entries(map).forEach(([nd, dom]) => {
+      const h = e => window.__NRD_KERNEL__?.schedule(this._agent, { type: nd, payload: { originalEvent: e, target: e.target } });
+      this._root.addEventListener(dom, h);
+      this._evClean.push(() => this._root.removeEventListener(dom, h));
+    });
+  }
+  detach() { this._evClean.forEach(fn => fn()); }
+}
+
+// ── Agent ───────────────────────────────────────────────────────────────────
+class Agent {
+  constructor(def, el) {
+    this.def = def;
+    this.el = el;
+    this.id = `${def.name}:${Math.random().toString(36).slice(2, 8)}`;
+    this.identity = {
+      traits: [...(def.identity?.traits || [])],
+      family: def.identity?.family || null,
+      visibility: def.identity?.visibility || 'public',
+    };
+    this.input = {};
+    this.state = typeof def.state === 'function' ? def.state() : (def.state ? { ...def.state } : {});
+    this.status = 'idle';
+    this.energy = 0;
+    this.lastRun = 0;
+    this._listeners = {};
+    this._idListeners = [];
+    this.ui = new UIAPI(el, this);
+    this.emit = this._makeEmitter();
+  }
+
+  addTrait(t) { if (!this.identity.traits.includes(t)) { this.identity.traits.push(t); this._idListeners.forEach(cb => cb(this)); } }
+  removeTrait(t) { this.identity.traits = this.identity.traits.filter(x => x !== t); this._idListeners.forEach(cb => cb(this)); }
+  hasTrait(t) { return this.identity.traits.includes(t); }
+  onIdentityChange(cb) { this._idListeners.push(cb); }
+
+  receive(port, data) {
+    this.input[port] = data;
+    this._dispatch({ type: `input.${port}`, payload: data });
+  }
+
+  on(port, cb) {
+    if (!this._listeners[port]) this._listeners[port] = [];
+    this._listeners[port].push(cb);
+    return () => { this._listeners[port] = this._listeners[port].filter(l => l !== cb); };
+  }
+
+  _makeEmitter() {
+    return (port, data) => {
+      (this._listeners[port] || []).forEach(cb => cb(data));
+      window.__NRD_DT__?.onEmit(this, port, data);
+    };
+  }
+
+  mount() { this._dispatch({ type: 'lifecycle.mount', payload: null }); }
+  destroy() { this.ui.detach(); }
+
+  _dispatch(event) { window.__NRD_KERNEL__?.schedule(this, event); }
+
+  run(event) {
+    if (!this.def.flows) return;
+    this.status = 'running';
+    this.energy = Math.min(this.energy + 1, 10);
+    this.lastRun = Date.now();
+
+    const ctx = {
+      input: this.input,
+      state: this.state,
+      local: {},
+      event,
+      ui: this.ui,
+      emit: this.emit,
+      self: this,
+    };
+
+    this.def.flows.forEach(flow => FlowExecutor.run(flow, ctx, event));
+    window.__NRD_DT__?.onRun(this, event);
+  }
+
+  toJSON() {
+    return { id: this.id, name: this.def.name, identity: this.identity, status: this.status, state: this.state };
+  }
+}
+
+// ── Scheduler ────────────────────────────────────────────────────────────────
+class Scheduler {
+  constructor() { this.queue = []; this.running = false; this._seen = new Set(); }
+  start() { this.running = true; this._loop(); }
+  stop() { this.running = false; }
+  schedule(agent, event) {
+    if (agent.status === 'cooldown') return;
+    const key = `${agent.id}:${event.type}`;
+    if (this._seen.has(key)) return;
+    this.queue.push({ agent, event, score: 0 });
+  }
+  _loop() {
+    if (!this.running) return;
+    this._seen.clear();
+    if (this.queue.length) {
+      this.queue.forEach(e => e.score = this._score(e.agent, e.event));
+      this.queue.sort((a, b) => b.score - a.score);
+      this.queue.splice(0, 8).forEach(({ agent, event }) => {
+        this._seen.add(`${agent.id}:${event.type}`);
+        this._exec(agent, event);
+      });
+    }
+    requestAnimationFrame(() => this._loop());
+  }
+  _exec(agent, event) {
+    if (agent.status === 'cooldown' || agent.status === 'running') return;
+    agent.run(event);
+    agent.status = 'cooldown';
+    const ms = event.type.startsWith('lifecycle') ? 0 : event.type.startsWith('ui') ? 16 : 32;
+    setTimeout(() => { agent.status = 'idle'; agent.energy = Math.max(0, agent.energy - 1); }, ms);
+  }
+  _score(agent, event) {
+    let s = 0;
+    if (event.type.startsWith('lifecycle')) s += 20;
+    if (event.type.startsWith('ui')) s += 8;
+    if (event.type.startsWith('input')) s += 5;
+    s += agent.energy * 1.5;
+    s += Math.min((Date.now() - agent.lastRun) / 500, 6);
+    return s;
+  }
+}
+
+// ── AgentRegistry ────────────────────────────────────────────────────────────
+class AgentRegistry {
+  constructor() { this._agents = new Map(); this._listeners = []; }
+  register(agent) {
+    this._agents.set(agent.id, agent);
+    this._listeners.forEach(cb => cb(agent));
+    window.__NRD_DT__?.onRegister(agent);
+  }
+  unregister(agent) { this._agents.delete(agent.id); window.__NRD_DT__?.onUnregister(agent); }
+  findByName(name) { return [...this._agents.values()].filter(a => a.def.name === name); }
+  find(filter) { return [...this._agents.values()].filter(a => this.match(a, filter)); }
+  match(agent, filter) {
+    if (!filter) return true;
+    if (filter.trait && !agent.identity.traits.includes(filter.trait)) return false;
+    if (filter.family && agent.identity.family !== filter.family) return false;
+    if (filter.name && agent.def.name !== filter.name) return false;
+    return true;
+  }
+  all() { return [...this._agents.values()]; }
+  onRegister(cb) { this._listeners.push(cb); return () => { this._listeners = this._listeners.filter(l => l !== cb); }; }
+}
+
+// ── Kernel ───────────────────────────────────────────────────────────────────
+class Kernel {
+  constructor() {
+    this.scheduler = new Scheduler();
+    this.registry = new AgentRegistry();
+    this._connections = [];
+    window.__NRD_KERNEL__ = this;
+  }
+  start() { this.scheduler.start(); }
+
+  instantiate(def, el) {
+    const agent = new Agent(def, el);
+    if (def.template) el.innerHTML = def.template;
+    this.registry.register(agent);
+    this._wireAgent(agent);
+    agent.mount();
+    return agent;
+  }
+
+  connect(fromStr, toStr) {
+    this._connections.push({ from: fromStr, to: toStr });
+    const [fn, fp] = this._split(fromStr);
+    const [tn, tp] = this._split(toStr);
+
+    const wire = (src, tgt) => src.on(fp, data => tgt.receive(tp, data));
+
+    this.registry.findByName(fn).forEach(src =>
+      this.registry.findByName(tn).forEach(tgt => wire(src, tgt))
+    );
+
+    this.registry.onRegister(agent => {
+      if (agent.def.name === fn) this.registry.findByName(tn).forEach(tgt => wire(agent, tgt));
+      if (agent.def.name === tn) this.registry.findByName(fn).forEach(src => wire(src, agent));
+    });
+  }
+
+  _wireAgent(agent) {
+    this._connections.forEach(({ from, to }) => {
+      const [fn, fp] = this._split(from);
+      const [tn, tp] = this._split(to);
+      if (fn === agent.def.name) this.registry.findByName(tn).forEach(t => agent.on(fp, d => t.receive(tp, d)));
+      if (tn === agent.def.name) this.registry.findByName(fn).forEach(s => s.on(fp, d => agent.receive(tp, d)));
+    });
+  }
+
+  _split(ref) { const i = ref.lastIndexOf('.'); return [ref.slice(0, i), ref.slice(i + 1)]; }
+  schedule(agent, event) { this.scheduler.schedule(agent, event); }
+
+  getStats() {
+    return { agents: this.registry.all().length, queue: this.scheduler.queue.length };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Movie data
+// ═══════════════════════════════════════════════════════════════════════════
+
+const MOVIES = [
+  { id: 1, title: "Inception", year: 2010, rating: 8.8, genre: "Sci-Fi",
+    overview: "A thief who steals corporate secrets through dream-sharing technology is given the inverse task of planting an idea into the mind of a C.E.O.",
+    poster: "https://images.unsplash.com/photo-1440404653325-ab127d49abc1?w=300&q=80",
+    backdrop: "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=600&q=80" },
+  { id: 2, title: "Interstellar", year: 2014, rating: 8.6, genre: "Sci-Fi",
+    overview: "A team of explorers travel through a wormhole in space in an attempt to ensure humanity's survival.",
+    poster: "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=300&q=80",
+    backdrop: "https://images.unsplash.com/photo-1465101162946-4377e57745c3?w=600&q=80" },
+  { id: 3, title: "The Matrix", year: 1999, rating: 8.7, genre: "Action",
+    overview: "A computer programmer discovers that reality as he knows it is a simulation run by machines, and joins a rebellion to break free.",
+    poster: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=300&q=80",
+    backdrop: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&q=80" },
+  { id: 4, title: "Dune", year: 2021, rating: 8.0, genre: "Sci-Fi",
+    overview: "Feature adaptation of Frank Herbert's science fiction novel about the son of a noble family entrusted with the protection of the most valuable asset in the galaxy.",
+    poster: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&q=80",
+    backdrop: "https://images.unsplash.com/photo-1509266272358-7701da638078?w=600&q=80" },
+  { id: 5, title: "Oppenheimer", year: 2023, rating: 8.5, genre: "Drama",
+    overview: "The story of American scientist J. Robert Oppenheimer and his role in the development of the atomic bomb during WWII.",
+    poster: "https://images.unsplash.com/photo-1463171379579-3fdfb86d6285?w=300&q=80",
+    backdrop: "https://images.unsplash.com/photo-1569230919100-d3fd5e1132f4?w=600&q=80" },
+  { id: 6, title: "Blade Runner", year: 1982, rating: 8.1, genre: "Neo-Noir",
+    overview: "A blade runner must pursue and terminate four replicants who stole a ship in space and have returned to Earth to find their creator.",
+    poster: "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=300&q=80",
+    backdrop: "https://images.unsplash.com/photo-1542831371-29b0f74f9713?w=600&q=80" },
+  { id: 7, title: "2001: A Space Odyssey", year: 1968, rating: 8.3, genre: "Sci-Fi",
+    overview: "After discovering a mysterious artifact buried beneath the lunar surface, mankind sets off on a quest to find its origins with help from supercomputer H.A.L. 9000.",
+    poster: "https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=300&q=80",
+    backdrop: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&q=80" },
+  { id: 8, title: "Parasite", year: 2019, rating: 8.5, genre: "Thriller",
+    overview: "Greed and class discrimination threaten the newly formed symbiotic relationship between the wealthy Park family and the destitute Kim clan.",
+    poster: "https://images.unsplash.com/photo-1574267432553-4b4628081c31?w=300&q=80",
+    backdrop: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=600&q=80" },
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Agent Definitions (with real behavior)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const MovieFetcherDef = {
+  name: 'MovieFetcher',
+  identity: { traits: ['data-source'], family: 'movie-system', visibility: 'public' },
+  inputs: {},
+  outputs: { movies: null },
+  template: '',
+  state: () => ({ loaded: false }),
+  flows: [
+    {
+      name: 'init',
+      pipelines: [{
+        source: 'lifecycle.mount',
+        steps: [{
+          type: 'raw',
+          fn(ctx) {
+            // Simulate async fetch with a tiny delay
+            setTimeout(() => {
+              ctx.emit('movies', MOVIES);
+              ctx.state.loaded = true;
+            }, 120);
+          }
+        }]
+      }]
+    }
+  ],
+};
+
+const MovieGridDef = {
+  name: 'MovieGrid',
+  identity: { traits: ['grid'], family: 'movie-system', visibility: 'public' },
+  inputs: { movies: null },
+  outputs: { hover: null },
+  template: '<div class="movie-grid"></div>',
+  state: () => ({ movies: [], selectedId: null }),
+  flows: [
+    {
+      name: 'render',
+      pipelines: [{
+        source: 'input.movies',
+        steps: [{
+          type: 'raw',
+          fn(ctx) {
+            const movies = ctx.input.movies;
+            if (!movies?.length) return;
+            ctx.state.movies = movies;
+            ctx.ui.clear('.movie-grid');
+
+            const kernel = window.__NRD_KERNEL__;
+            const grid = ctx.self.el.querySelector('.movie-grid');
+
+            movies.forEach(movie => {
+              const cardEl = document.createElement('movie-card');
+              grid.appendChild(cardEl);
+
+              const cardAgent = kernel.instantiate(MovieCardDef, cardEl);
+
+              // Forward hover events from child card up to the grid's out port
+              cardAgent.on('hover', data => {
+                ctx.emit('hover', data);
+              });
+
+              // Send movie data to the card
+              cardAgent.receive('movie', movie);
+            });
+          }
+        }]
+      }]
+    }
+  ],
+};
+
+const MovieCardDef = {
+  name: 'MovieCard',
+  identity: { traits: ['movie', 'interactive'], family: 'movie-system', visibility: 'public' },
+  inputs: { movie: null },
+  outputs: { hover: null, select: null },
+  template: `
+    <div class="card">
+      <div class="card-poster-wrapper">
+        <img class="card-poster" src="" alt="" loading="lazy" />
+      </div>
+      <div class="card-body">
+        <div class="card-title"></div>
+        <div class="card-meta">
+          <span class="card-rating"></span>
+          <span class="card-year"></span>
+        </div>
+      </div>
+    </div>
+  `,
+  state: () => ({ movie: null, hovered: false }),
+  flows: [
+    {
+      name: 'populate',
+      pipelines: [{
+        source: 'input.movie',
+        steps: [{
+          type: 'raw',
+          fn(ctx) {
+            const m = ctx.input.movie;
+            if (!m) return;
+            ctx.state.movie = m;
+            ctx.ui.setAttr('.card-poster', 'src', m.poster);
+            ctx.ui.setAttr('.card-poster', 'alt', m.title);
+            ctx.ui.setText('.card-title', m.title);
+            ctx.ui.setText('.card-rating', `★ ${m.rating}`);
+            ctx.ui.setText('.card-year', String(m.year));
+          }
+        }]
+      }]
+    },
+    {
+      name: 'on-hover',
+      pipelines: [{
+        source: 'ui.hover',
+        steps: [{
+          type: 'raw',
+          fn(ctx) {
+            if (!ctx.state.movie) return;
+            ctx.state.hovered = true;
+            ctx.ui.addClass('.card', 'selected');
+            ctx.emit('hover', ctx.state.movie);
+          }
+        }]
+      }]
+    },
+    {
+      name: 'on-leave',
+      pipelines: [{
+        source: 'ui.leave',
+        steps: [{
+          type: 'raw',
+          fn(ctx) {
+            ctx.state.hovered = false;
+            ctx.ui.removeClass('.card', 'selected');
+          }
+        }]
+      }]
+    },
+    {
+      name: 'on-click',
+      pipelines: [{
+        source: 'ui.click',
+        steps: [{
+          type: 'raw',
+          fn(ctx) {
+            if (ctx.state.movie) ctx.emit('select', ctx.state.movie);
+          }
+        }]
+      }]
+    },
+  ],
+};
+
+const PreviewPlayerDef = {
+  name: 'PreviewPlayer',
+  identity: { traits: ['preview'], family: 'movie-system', visibility: 'public' },
+  inputs: { movie: null },
+  outputs: {},
+  template: `
+    <div class="preview-empty" id="preview-empty">
+      <div class="preview-empty-icon">🎬</div>
+      <span>Hover a film to preview</span>
+    </div>
+    <div class="preview-card" id="preview-card">
+      <img class="preview-backdrop" src="" alt="" />
+      <div class="preview-title"></div>
+      <div class="preview-meta">
+        <span class="preview-rating-badge preview-tag"></span>
+        <span class="preview-tag preview-year"></span>
+        <span class="preview-tag preview-genre"></span>
+      </div>
+      <p class="preview-overview"></p>
+      <button class="preview-watch-btn">▶ Watch Now</button>
+    </div>
+  `,
+  state: () => ({ current: null }),
+  flows: [
+    {
+      name: 'show',
+      pipelines: [{
+        source: 'input.movie',
+        steps: [{
+          type: 'raw',
+          fn(ctx) {
+            const m = ctx.input.movie;
+            if (!m) return;
+            ctx.state.current = m;
+
+            // Swap visibility
+            const empty = ctx.self.el.querySelector('#preview-empty');
+            const card = ctx.self.el.querySelector('#preview-card');
+            if (empty) empty.style.display = 'none';
+            if (card) {
+              card.classList.remove('visible');
+              // Force reflow for animation
+              void card.offsetHeight;
+              card.classList.add('visible');
+            }
+
+            ctx.ui.setAttr('.preview-backdrop', 'src', m.backdrop || m.poster);
+            ctx.ui.setAttr('.preview-backdrop', 'alt', m.title);
+            ctx.ui.setText('.preview-title', m.title);
+            ctx.ui.setText('.preview-rating-badge', `★ ${m.rating}`);
+            ctx.ui.setText('.preview-year', String(m.year));
+            ctx.ui.setText('.preview-genre', m.genre);
+            ctx.ui.setText('.preview-overview', m.overview);
+          }
+        }]
+      }]
+    }
+  ],
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DevTools
+// ═══════════════════════════════════════════════════════════════════════════
+
+class DevTools {
+  constructor() {
+    this._agentMeta = new Map();
+    this._events = [];
+    this._canvas = null;
+    this._ctx2d = null;
+    window.__NRD_DT__ = this;
+  }
+
+  onRegister(agent) {
+    this._agentMeta.set(agent.id, { agent, emits: 0, lastEvent: null });
+    this._render();
+  }
+  onUnregister(agent) { this._agentMeta.delete(agent.id); this._render(); }
+  onRun(agent, event) {
+    const m = this._agentMeta.get(agent.id);
+    if (m) m.lastEvent = event.type;
+    this._addEvent(agent, event.type);
+    this._render();
+  }
+  onEmit(agent, port, data) {
+    const m = this._agentMeta.get(agent.id);
+    if (m) m.emits++;
+    this._addEvent(agent, `emit:${port}`, typeof data === 'object' ? JSON.stringify(data).slice(0, 50) : String(data));
+    this._render();
+  }
+  _addEvent(agent, type, data = null) {
+    this._events.unshift({ ts: Date.now(), name: agent.def.name, type, data });
+    if (this._events.length > 120) this._events.length = 120;
+  }
+
+  _render() {
+    this._renderAgents();
+    this._renderEvents();
+    this._renderStats();
+    this._renderGraph();
+    // Update status bar
+    const stats = window.__NRD_KERNEL__?.getStats();
+    if (stats) document.getElementById('runtime-stats').textContent = `${stats.agents} agents · ${this._events.length} events`;
+  }
+
+  _renderAgents() {
+    const list = document.getElementById('nrd-agents-list');
+    if (!list) return;
+    list.innerHTML = [...this._agentMeta.values()].map(({ agent, emits, lastEvent }) => `
+      <div class="nrd-agent-row">
+        <span class="nrd-status-dot nrd-status-${agent.status}"></span>
+        <div class="nrd-agent-info">
+          <strong>${agent.def.name}</strong>
+          <div class="nrd-agent-id">${agent.id}</div>
+          ${agent.identity.traits.length ? `<div class="nrd-traits">${agent.identity.traits.map(t => `<span class="nrd-trait">${t}</span>`).join('')}</div>` : ''}
+          ${lastEvent ? `<div class="nrd-last-event">↳ ${lastEvent}</div>` : ''}
+          ${Object.keys(agent.state).length ? `<div class="nrd-state">${JSON.stringify(agent.state).slice(0, 70)}</div>` : ''}
+        </div>
+        <span class="nrd-emit-count">${emits}↑</span>
+      </div>
+    `).join('');
+  }
+
+  _renderEvents() {
+    const list = document.getElementById('nrd-events-list');
+    if (!list) return;
+    list.innerHTML = this._events.slice(0, 40).map(({ ts, name, type, data }) => {
+      const cls = type.startsWith('emit') ? 'nrd-ev-emit' : type.startsWith('lifecycle') ? 'nrd-ev-lifecycle' : 'nrd-ev-input';
+      return `
+        <div class="nrd-event-row">
+          <span class="nrd-event-time">${new Date(ts).toLocaleTimeString([], { hour12: false })}</span>
+          <span class="nrd-event-agent">${name}</span>
+          <span class="nrd-event-type ${cls}">${type}</span>
+          ${data ? `<span class="nrd-event-data">${data}</span>` : ''}
+        </div>
+      `;
+    }).join('');
+  }
+
+  _renderStats() {
+    const stats = window.__NRD_KERNEL__?.getStats() || {};
+    const el = document.getElementById('nrd-stats');
+    if (el) el.textContent = `${stats.agents || 0} agents · ${this._events.length} events`;
+    const ks = document.getElementById('nrd-kernel-stats');
+    if (ks) ks.textContent = `queue: ${stats.queue || 0}`;
+  }
+
+  _renderGraph() {
+    if (!this._ctx2d) {
+      const c = document.getElementById('nrd-graph-canvas');
+      if (!c) return;
+      this._canvas = c;
+      this._ctx2d = c.getContext('2d');
+    }
+    const ctx = this._ctx2d;
+    const w = this._canvas.width, h = this._canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    const agents = [...this._agentMeta.values()];
+    if (!agents.length) {
+      ctx.fillStyle = '#555'; ctx.font = '11px monospace';
+      ctx.fillText('No agents yet.', 12, 24); return;
+    }
+
+    const cx = w / 2, cy = h / 2;
+    const r = Math.min(cx, cy) - 42;
+    const pos = {};
+
+    agents.forEach(({ agent }, i) => {
+      const a = (i / agents.length) * Math.PI * 2 - Math.PI / 2;
+      pos[agent.id] = { x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r, agent };
+    });
+
+    // Draw connections
+    (window.__NRD_KERNEL__?._connections || []).forEach(({ from, to }) => {
+      const fn = from.split('.')[0], tn = to.split('.')[0];
+      const se = agents.find(a => a.agent.def.name === fn);
+      const te = agents.find(a => a.agent.def.name === tn);
+      if (!se || !te) return;
+      const sp = pos[se.agent.id], tp = pos[te.agent.id];
+      if (!sp || !tp) return;
+
+      const ang = Math.atan2(tp.y - sp.y, tp.x - sp.x);
+      const ax = tp.x - Math.cos(ang) * 20, ay = tp.y - Math.sin(ang) * 20;
+
+      ctx.beginPath();
+      ctx.moveTo(sp.x, sp.y);
+      ctx.lineTo(ax, ay);
+      ctx.strokeStyle = 'rgba(79,255,176,0.2)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(ax - 8 * Math.cos(ang - 0.4), ay - 8 * Math.sin(ang - 0.4));
+      ctx.lineTo(ax - 8 * Math.cos(ang + 0.4), ay - 8 * Math.sin(ang + 0.4));
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(79,255,176,0.4)';
+      ctx.fill();
+    });
+
+    // Draw nodes
+    Object.values(pos).forEach(({ x, y, agent }) => {
+      const color = agent.status === 'running' ? '#4fffb0' : agent.status === 'cooldown' ? '#ffb347' : '#4a9eff';
+      ctx.shadowColor = color;
+      ctx.shadowBlur = agent.status === 'running' ? 18 : 6;
+      ctx.beginPath();
+      ctx.arc(x, y, 13, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#0d1117';
+      ctx.font = 'bold 7px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(agent.def.name.slice(0, 2).toUpperCase(), x, y + 3);
+      ctx.fillStyle = '#8b949e';
+      ctx.font = '8px monospace';
+      ctx.fillText(agent.def.name.replace(/([A-Z])/g, ' $1').trim().slice(0, 12), x, y + 26);
+    });
+  }
+
+  startLoop() { const draw = () => { this._renderGraph(); requestAnimationFrame(draw); }; draw(); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Bootstrap
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Init DevTools
+const dt = new DevTools();
+dt.startLoop();
+
+// Init Kernel
+const kernel = new Kernel();
+
+// Instantiate agents from DOM
+['movie-fetcher', 'movie-grid', 'preview-player'].forEach(tag => {
+  const defMap = {
+    'movie-fetcher': MovieFetcherDef,
+    'movie-grid': MovieGridDef,
+    'preview-player': PreviewPlayerDef,
+  };
+  document.querySelectorAll(tag).forEach(el => {
+    if (!el.__nrd) {
+      el.__nrd = kernel.instantiate(defMap[tag], el);
+    }
+  });
+});
+
+// Wire global graph
+// MovieFetcher.movies → MovieGrid.movies
+// MovieGrid.hover     → PreviewPlayer.movie
+kernel.connect('MovieFetcher.movies', 'MovieGrid.movies');
+kernel.connect('MovieGrid.hover', 'PreviewPlayer.movie');
+
+// Start runtime
+kernel.start();
+
+// ── DevTools UI wiring ────────────────────────────────────────────────────
+
+const panel = document.getElementById('__nrd-devtools__');
+let dtVisible = false;
+
+function toggleDevTools() {
+  dtVisible = !dtVisible;
+  panel.style.transform = dtVisible ? 'translateX(0)' : 'translateX(100%)';
+}
+
+document.getElementById('nrd-close').addEventListener('click', toggleDevTools);
+document.getElementById('devtools-toggle').addEventListener('click', toggleDevTools);
+document.addEventListener('keydown', e => { if (e.ctrlKey && e.shiftKey && e.key === 'D') toggleDevTools(); });
+
+// Tabs
+panel.querySelectorAll('.nrd-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    panel.querySelectorAll('.nrd-tab').forEach(b => b.classList.remove('active'));
+    panel.querySelectorAll('.nrd-tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    panel.querySelector(`[data-content="${btn.dataset.tab}"]`).classList.add('active');
+  });
+});
+
+console.log('%c⬡ NeuroDOM Runtime%c v0.1-alpha — Press Ctrl+Shift+D for DevTools',
+  'color:#4a9eff;font-weight:bold;font-size:14px', 'color:#8b949e;font-size:12px');
+</script>
+</body>
+</html>
